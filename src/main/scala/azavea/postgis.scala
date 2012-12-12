@@ -3,18 +3,15 @@ package azavea.slick
 import language.implicitConversions
 
 import scala.collection.mutable.ArrayBuffer
-import scala.slick.ast._
 
 import scala.slick.SlickException
 import scala.slick.lifted._
-import scala.slick.driver._
-import scala.slick.ast.FieldSymbol
+import scala.slick.ast._
 
-import java.io.InputStream
-import java.sql.Blob
 import scala.slick.session.{PositionedParameters, PositionedResult}
 
 import scala.slick.driver.PostgresDriver
+
 import com.vividsolutions.jts.geom._
 import com.vividsolutions.jts.io.{WKBReader, WKBWriter, InputStreamInStream, WKTWriter}
 
@@ -24,7 +21,10 @@ trait PostgisDriver extends PostgresDriver {
   // Implicit support
 
   trait Implicits extends super.Implicits with PostgisConversions {
+    import scala.slick.driver.BasicProfile
+
     implicit object GeomTypeMapper extends BaseTypeMapper[Geometry] {
+      // I *don't* think this is the correct way to do this...?
       def apply(profile: BasicProfile) = profile match {
           case p: PostgisDriver => p.typeMapperDelegates.geomTypeMapperDelegate
           case _ => sys.error("only supported by the postgis driver")
@@ -88,7 +88,6 @@ trait PostgisDriver extends PostgresDriver {
       def reader = new WKBReader() // These are not threadsafe
       def writer = new WKBWriter(2,true) // so always get a fresh copy
       def twriter = new WKTWriter(2)
-      def asInStream(i: InputStream) = new InputStreamInStream(i)
       def readGeomFromByteArr(b: Array[Byte]) = reader.read(b)
 
       def geomAsByteArr(g: Geometry):Array[Byte] = 

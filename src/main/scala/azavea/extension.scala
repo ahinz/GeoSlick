@@ -2,13 +2,11 @@ package azavea.slick
 
 import language.implicitConversions
 
-import scala.slick.ast._
-import scala.slick.lifted._
+import scala.slick.ast.{Library, Node}
+import scala.slick.lifted.{Column, ExtensionMethods}
 
 import com.vividsolutions.jts.geom._
 import azavea.slick.PostgisDriver._
-import azavea.slick.PostgisDriver.Implicit._
-
 
 object PostgisLibrary {
   val Distance = new Library.SqlFunction("ST_Distance")
