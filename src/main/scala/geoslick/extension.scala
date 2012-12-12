@@ -1,4 +1,4 @@
-package azavea.slick
+package geoslick
 
 import language.implicitConversions
 
@@ -6,7 +6,6 @@ import scala.slick.ast.{Library, Node}
 import scala.slick.lifted.{Column, ExtensionMethods}
 
 import com.vividsolutions.jts.geom._
-import azavea.slick.PostgisDriver._
 
 object PostgisLibrary {
 

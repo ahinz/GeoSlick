@@ -1,4 +1,4 @@
-package azavea.slick
+package geoslick
 
 import language.implicitConversions
 
