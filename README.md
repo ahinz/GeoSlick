@@ -7,7 +7,9 @@ to Slick
 
 ### Supported Features
 
-Pretty much all PostGIS functions are supported
+Pretty much all PostGIS functions are supported except for PostGIS 
+Geometry Editor extensions
+(http://postgis.refractions.net/documentation/manual-1.3/ch06.html#id2578062)
 
 ### Example
 

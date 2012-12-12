@@ -68,6 +68,14 @@ object PostgisLibrary {
 
   //TODO: regular "GeometryType" without ST_?
 
+  // Outputs
+  val AsEWKT = new GeoFunction("ST_AsEWKT")
+  val AsEHEXEWKB = new GeoFunction("ST_AsEHEXEWKB")
+  val AsSVG = new GeoFunction("ST_AsSVG")
+  val AsGML = new GeoFunction("ST_AsGML")
+  val AsKML = new GeoFunction("ST_AsKML")
+  val AsGeoJson = new GeoFunction("ST_AsGeoJson")
+
   class GeoOperator(name: String) extends Library.SqlOperator(name)
 
   val === = new GeoOperator("=")
@@ -145,87 +153,106 @@ final class GeometryColumnExtensionMethods[P1](val c: Column[P1]) extends AnyVal
   def symDifference[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Geometry, R]) =
     om(PostgisLibrary.SymDifference.column(n, Node(e)))    
 
-  def Difference[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Geometry, R]) =
+  def difference[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Geometry, R]) =
     om(PostgisLibrary.Difference.column(n, Node(e)))    
 
-  def Union[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Geometry, R]) =
+  def union[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Geometry, R]) =
     om(PostgisLibrary.Union.column(n, Node(e)))    
 
-  def MemUnion[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Geometry, R]) =
+  def memUnion[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Geometry, R]) =
     om(PostgisLibrary.MemUnion.column(n, Node(e)))    
 
-  def ShiftLongitude[P2,R](e: Column[P2])(implicit om: o#to[Geometry, R]) =
+  def shiftLongitude[P2,R](e: Column[P2])(implicit om: o#to[Geometry, R]) =
     om(PostgisLibrary.ShiftLongitude.column(n, Node(e)))    
 
-  def Buffer[P2,R](e: Column[P2])(implicit om: o#arg[Int,P2]#to[Geometry, R]) =
+  def buffer[P2,R](e: Column[P2])(implicit om: o#arg[Int,P2]#to[Geometry, R]) =
     om(PostgisLibrary.Buffer.column(n, Node(e)))    
 
   // Accessors
-  def AsText[P2,R](e: Column[P2])(implicit om: o#to[String, R]) =
+  def asText[P2,R](e: Column[P2])(implicit om: o#to[String, R]) =
     om(PostgisLibrary.AsText.column(n, Node(e)))    
 
-  def SRID[P2,R](e: Column[P2])(implicit om: o#to[Int, R]) =
+  def srid[P2,R](e: Column[P2])(implicit om: o#to[Int, R]) =
     om(PostgisLibrary.SRID.column(n, Node(e)))    
 
-  def Dimension[P2,R](e: Column[P2])(implicit om: o#to[Int, R]) =
+  def dimension[P2,R](e: Column[P2])(implicit om: o#to[Int, R]) =
     om(PostgisLibrary.Dimension.column(n, Node(e)))    
 
-  def Envelope[P2,R](e: Column[P2])(implicit om: o#to[Geometry, R]) =
+  def envelope[P2,R](e: Column[P2])(implicit om: o#to[Geometry, R]) =
     om(PostgisLibrary.Envelope.column(n, Node(e)))    
 
-  def IsEmpty[P2,R](e: Column[P2])(implicit om: o#to[Boolean, R]) =
+  def isEmpty[P2,R](e: Column[P2])(implicit om: o#to[Boolean, R]) =
     om(PostgisLibrary.IsEmpty.column(n, Node(e)))    
 
-  def IsSimple[P2,R](e: Column[P2])(implicit om: o#to[Boolean, R]) =
+  def isSimple[P2,R](e: Column[P2])(implicit om: o#to[Boolean, R]) =
     om(PostgisLibrary.IsSimple.column(n, Node(e)))    
 
-  def IsClosed[P2,R](e: Column[P2])(implicit om: o#to[Boolean, R]) =
+  def isClosed[P2,R](e: Column[P2])(implicit om: o#to[Boolean, R]) =
     om(PostgisLibrary.IsClosed.column(n, Node(e)))    
 
-  def IsRing[P2,R](e: Column[P2])(implicit om: o#to[Boolean, R]) =
+  def isRing[P2,R](e: Column[P2])(implicit om: o#to[Boolean, R]) =
     om(PostgisLibrary.IsRing.column(n, Node(e)))    
 
-  def NumGeometries[P2,R](e: Column[P2])(implicit om: o#to[Int, R]) =
+  def numGeometries[P2,R](e: Column[P2])(implicit om: o#to[Int, R]) =
     om(PostgisLibrary.NumGeometries.column(n, Node(e)))    
 
-  def GeometryN[P2,R](e: Column[P2])(implicit om: o#arg[Int,P2]#to[Geometry, R]) =
+  def geometryN[P2,R](e: Column[P2])(implicit om: o#arg[Int,P2]#to[Geometry, R]) =
     om(PostgisLibrary.GeometryN.column(n, Node(e)))    
 
-  def NumPoints[P2,R](e: Column[P2])(implicit om: o#to[Int, R]) =
+  def numPoints[P2,R](e: Column[P2])(implicit om: o#to[Int, R]) =
     om(PostgisLibrary.NumPoints.column(n, Node(e)))    
 
-  def PointN[P2,R](e: Column[P2])(implicit om: o#arg[Int,P2]#to[Geometry, R]) =
+  def pointN[P2,R](e: Column[P2])(implicit om: o#arg[Int,P2]#to[Geometry, R]) =
     om(PostgisLibrary.PointN.column(n, Node(e)))    
 
-  def ExteriorRing[P2,R](e: Column[P2])(implicit om: o#arg[Int,P2]#to[Geometry, R]) =
+  def exteriorRing[P2,R](e: Column[P2])(implicit om: o#arg[Int,P2]#to[Geometry, R]) =
     om(PostgisLibrary.PointN.column(n, Node(e)))    
 
-  def NumInteriorRings[P2,R](e: Column[P2])(implicit om: o#to[Int, R]) =
+  def numInteriorRings[P2,R](e: Column[P2])(implicit om: o#to[Int, R]) =
     om(PostgisLibrary.NumInteriorRings.column(n, Node(e)))    
 
-  def InteriorRingN[P2,R](e: Column[P2])(implicit om: o#arg[Int,P2]#to[Geometry, R]) =
+  def interiorRingN[P2,R](e: Column[P2])(implicit om: o#arg[Int,P2]#to[Geometry, R]) =
     om(PostgisLibrary.InteriorRingN.column(n, Node(e)))    
 
-  def EndPoint[P2,R](e: Column[P2])(implicit om: o#to[Geometry, R]) =
+  def endPoint[P2,R](e: Column[P2])(implicit om: o#to[Geometry, R]) =
     om(PostgisLibrary.EndPoint.column(n, Node(e)))    
 
-  def StartPoint[P2,R](e: Column[P2])(implicit om: o#to[Geometry, R]) =
+  def startPoint[P2,R](e: Column[P2])(implicit om: o#to[Geometry, R]) =
     om(PostgisLibrary.StartPoint.column(n, Node(e)))    
 
-  def GeometryType[P2,R](e: Column[P2])(implicit om: o#to[String, R]) =
+  def geometryType[P2,R](e: Column[P2])(implicit om: o#to[String, R]) =
     om(PostgisLibrary.GeometryType.column(n, Node(e)))    
 
-  def X[P2,R](e: Column[P2])(implicit om: o#to[Double, R]) =
+  def x[P2,R](e: Column[P2])(implicit om: o#to[Double, R]) =
     om(PostgisLibrary.X.column(n, Node(e)))    
 
-  def Y[P2,R](e: Column[P2])(implicit om: o#to[Double, R]) =
+  def y[P2,R](e: Column[P2])(implicit om: o#to[Double, R]) =
     om(PostgisLibrary.Y.column(n, Node(e)))    
 
-  def Z[P2,R](e: Column[P2])(implicit om: o#to[Double, R]) =
+  def z[P2,R](e: Column[P2])(implicit om: o#to[Double, R]) =
     om(PostgisLibrary.Z.column(n, Node(e)))    
 
-  def M[P2,R](e: Column[P2])(implicit om: o#to[Double, R]) =
+  def m[P2,R](e: Column[P2])(implicit om: o#to[Double, R]) =
     om(PostgisLibrary.M.column(n, Node(e)))    
+
+  // Outputs
+  def asEWKT[P2,R](e: Column[P2])(implicit om: o#to[String, R]) =
+    om(PostgisLibrary.AsEWKT.column(n, Node(e)))    
+
+  def asEHEXEWKB[P2,R](e: Column[P2])(implicit om: o#to[String, R]) =
+    om(PostgisLibrary.AsEHEXEWKB.column(n, Node(e)))    
+
+  def asSVG[P2,R](e: Column[P2])(implicit om: o#to[String, R]) =
+    om(PostgisLibrary.AsSVG.column(n, Node(e)))    
+
+  def asGML[P2,R](e: Column[P2])(implicit om: o#to[String, R]) =
+    om(PostgisLibrary.AsGML.column(n, Node(e)))    
+
+  def asKML[P2,R](e: Column[P2])(implicit om: o#to[String, R]) =
+    om(PostgisLibrary.AsKML.column(n, Node(e)))    
+
+  def asGeoJson[P2,R](e: Column[P2])(implicit om: o#to[String, R]) =
+    om(PostgisLibrary.AsGeoJson.column(n, Node(e)))    
 
   // Operators
   def ===[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean, R]) =
