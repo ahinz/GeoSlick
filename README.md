@@ -5,6 +5,16 @@
 GeoSlick is an experimental library that adds support for PostGIS
 to Slick
 
+### Geometry Columns
+
+To support geometry columns have your tables mix in the `Postgis`
+trait or extend `PostgisTable`. To declare a geometry column you
+use the `geoColumn` method with the JTS type, field name and SRID:
+
+```scala
+def geom = geoColumn[Polygon]("geom", 4326)
+```
+
 ### Supported Features
 
 Pretty much all PostGIS functions are supported except for PostGIS 
@@ -17,7 +27,7 @@ Geometry Editor extensions
 import geoslick.PostgisDriver.simple._
 import Database.threadLocalSession
 
-object City extends Table[(Int,String,Geometry)]("cities") with Geo {
+object City extends Table[(Int,String,Geometry)]("cities") with Postgis {
       
   def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
   def name = column[String]("name")

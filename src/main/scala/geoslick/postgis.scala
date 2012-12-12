@@ -33,7 +33,13 @@ trait PostgisDriver extends PostgresDriver {
   }
 
   class SimpleQL extends super.SimpleQL with Implicits {
-    type Geo = PostgisDriver.Geo
+    type Postgis = PostgisDriver.Postgis
+    type PostgisTable[T] = PostgisDriver.PostgisTable[T]
+  }
+
+  abstract class PostgisTable[T](schema: Option[String], table: String) 
+      extends Table[T](schema, table) with Postgis {
+    def this(tblName: String) = this(None, tblName)
   }
 
   override val simple = new SimpleQL
@@ -49,7 +55,7 @@ trait PostgisDriver extends PostgresDriver {
   case class Dims(srid: Int) extends ColumnOption[Nothing]
   case class GeoType[T <: Geometry](s: String) extends ColumnOption[Nothing]
 
-  trait Geo { self: Table[_] =>
+  trait Postgis { self: Table[_] =>
     // Take a column and wrap it with a function that is called
     // only on select. In this case, geometry fields get wrapped
     // with ST_AsEWKB on select and are inserted as raw bytes
