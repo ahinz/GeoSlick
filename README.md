@@ -58,9 +58,11 @@ Note that `c.geom.distance(g)` is turned into a PostGIS function. The select
 statement for q2 looks something like:
 
 ```sql
-select x2."name", ST_AsEWKB(x2."geom"),
-         ST_Distance(ST_AsEWKB(x2."geom"),ST_GeomFromEWKT('SRID=4326;POINT
-         (-79.93 40.35)')) from "cities" x2 where
-         ST_Distance(ST_AsEWKB(x2."geom"),ST_GeomFromEWKT('SRID=4326;POINT
-         (-79.93 40.35)')) < 1.2
+select x2."name", 
+       ST_AsEWKB(x2."geom"), 
+       ST_Distance(ST_AsEWKB(x2."geom"),
+         ST_GeomFromEWKT('SRID=4326;POINT(-79.93 40.35)'))
+from "cities" x2 
+where ST_Distance(ST_AsEWKB(x2."geom"),
+        ST_GeomFromEWKT('SRID=4326;POINT(-79.93 40.35)')) < 1.2
 ```
