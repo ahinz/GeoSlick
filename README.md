@@ -14,7 +14,7 @@ Geometry Editor extensions
 ### Example
 
 ```scala
-import azavea.slick.PostgisDriver.simple._
+import geoslick.PostgisDriver.simple._
 import Database.threadLocalSession
 
 object City extends Table[(Int,String,Geometry)]("cities") with Geo {
