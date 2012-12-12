@@ -67,6 +67,22 @@ object PostgisLibrary {
   val M = new GeoFunction("ST_M")
 
   //TODO: regular "GeometryType" without ST_?
+
+  class GeoOperator(name: String) extends Library.SqlOperator(name)
+
+  val === = new GeoOperator("=")
+  val &< = new GeoOperator("&<")
+  val &> = new GeoOperator("&>")
+  val << = new GeoOperator("<<")
+  val >> = new GeoOperator(">>")
+  val &<| = new GeoOperator("&<|")
+  val |&> = new GeoOperator("|&>")
+  val <<| = new GeoOperator("<<|")
+  val |>> = new GeoOperator(">>|")
+  val ~= = new GeoOperator("~=")
+  val @@ = new GeoOperator("@")
+  val ~ = new GeoOperator("~")
+  val && = new GeoOperator("&&")
 }
 
 final class GeometryColumnExtensionMethods[P1](val c: Column[P1]) extends AnyVal with ExtensionMethods[Geometry, P1] {
@@ -210,6 +226,46 @@ final class GeometryColumnExtensionMethods[P1](val c: Column[P1]) extends AnyVal
 
   def M[P2,R](e: Column[P2])(implicit om: o#to[Double, R]) =
     om(PostgisLibrary.M.column(n, Node(e)))    
+
+  // Operators
+  def ===[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean, R]) =
+    om(PostgisLibrary.===.column(n, Node(e)))
+
+  def &<[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean,R]) =
+    om(PostgisLibrary.&<.column(n, Node(e)))
+
+  def &>[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean,R]) =
+    om(PostgisLibrary.&>.column(n, Node(e)))
+
+  def <<[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean,R]) =
+    om(PostgisLibrary.<<.column(n, Node(e)))
+
+  def >>[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean,R]) =
+    om(PostgisLibrary.>>.column(n, Node(e)))
+
+  def &<|[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean,R]) =
+    om(PostgisLibrary.&<|.column(n, Node(e)))
+
+  def |&>[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean,R]) =
+    om(PostgisLibrary.|&>.column(n, Node(e)))
+
+  def <<|[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean,R]) =
+    om(PostgisLibrary.<<|.column(n, Node(e)))
+
+  def |>>[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean,R]) =
+    om(PostgisLibrary.|>>.column(n, Node(e)))
+
+  def ~=[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean,R]) =
+    om(PostgisLibrary.~=.column(n, Node(e)))
+
+  def @@[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean,R]) =
+    om(PostgisLibrary.@@.column(n, Node(e)))
+
+  def ~[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean,R]) =
+    om(PostgisLibrary.~.column(n, Node(e)))
+
+  def &&[P2,R](e: Column[P2])(implicit om: o#arg[Geometry,P2]#to[Boolean,R]) =
+    om(PostgisLibrary.&&.column(n, Node(e)))
 }
 
 trait PostgisConversions {
