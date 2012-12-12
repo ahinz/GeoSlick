@@ -3,15 +3,15 @@ import sbt.Keys._
 
 object MyBuild extends Build {
   lazy val project = Project("root", file(".")) settings(
-    //organization := "org.sample.demo",
-
-    name := "slickstuff",
+    organization := "com.azavea.geotrellis",
+    name := "geoslick",
+    version := "0.1.0-SNAPSHOT",
 
     scalaVersion := "2.10.0-RC5",
 
     scalacOptions ++= Seq("-deprecation", "-unchecked", "-optimize"),
 
-    parallelExecution := false,
+    parallelExecution := false,    
 
     libraryDependencies ++= Seq(
         "com.typesafe" % "slick_2.10.0-RC5" % "0.11.2",
@@ -34,6 +34,33 @@ object MyBuild extends Build {
 
     javaOptions in run += "-Xmx6G",
     // enable forking in run
-    fork in run := true
-  )
+    fork in run := true,
+
+      publishMavenStyle := true,
+      publishTo <<= version { (v: String) =>
+          val nexus = "https://oss.sonatype.org/"
+          if (v.trim.endsWith("SNAPSHOT"))
+            Some("snapshots" at nexus + "content/repositories/snapshots")
+          else
+            Some("releases" at nexus + "service/local/staging/deploy/maven2")
+        },
+      
+      publishArtifact in Test := false,
+      pomIncludeRepository := { _ => false },
+      licenses := Seq("BSD" -> url("https://raw.github.com/ahinz/GeoSlick/master/LICENSE")),
+
+      pomExtra := (
+<scm>
+  <url>git@github.com:ahinz/GeoSlick.git</url>
+  <connection>scm:git:git@github.com:ahinz/GeoSlick.git</connection>
+</scm>
+<developers>
+  <developer>
+    <id>ahinz</id>
+    <name>Adam Hinz</name>
+    <url>http://github.com/ahinz/</url>
+  </developer>
+</developers>
+      )
+    )
 }
