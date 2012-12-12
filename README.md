@@ -7,8 +7,7 @@ to Slick
 
 ### Supported Features
 
-Right now you're stuck with `distance` and jts-based Geometries.
-The plan is to add more postgis features as we go
+Pretty much all PostGIS functions are supported
 
 ### Example
 
