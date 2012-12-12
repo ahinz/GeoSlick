@@ -1,0 +1,4 @@
+.ensime*
+.lib
+target
+project/target
