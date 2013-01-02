@@ -103,29 +103,25 @@ trait PostgisDriver extends PostgresDriver {
     val geomTypeMapperDelegate = new GeomTypeMapperDelegate
 
     class GeomTypeMapperDelegate extends TypeMapperDelegate[Geometry] {
-      def reader = new WKBReader() // These are not threadsafe
-      def writer = new WKBWriter(2,true) // so always get a fresh copy
-      def twriter = new WKTWriter(2)
-      def readGeomFromByteArr(b: Array[Byte]): Geometry =
-        if (b != null) reader.read(b) else null
+      def wkbReader = new WKBReader() // These are not threadsafe
+      def wkbWriter = new WKBWriter(2, true) // so always get a fresh copy
+      def wktWriter = new WKTWriter(2)
 
-      def geomAsByteArr(g: Geometry): Array[Byte] =
-        writer.write(g)
+      def geomToBytes(g: Geometry): Array[Byte] =
+        if (g eq null) null else wkbWriter.write(g)
+      def bytesToGeom(b: Array[Byte]): Geometry =
+        if (b eq null) null else wkbReader.read(b)
 
-      def sqlTypeName = "geometry"
       def zero = null
-      def sqlType = java.sql.Types.BLOB
-      def setValue(v: Geometry, p: PositionedParameters) =
-        p.setBytes(geomAsByteArr(v))
-
+      def sqlTypeName = "GEOMETRY"
+      def sqlType = java.sql.Types.BINARY
+      def setValue(v: Geometry, p: PositionedParameters) = p.setBytes(geomToBytes(v))
       def setOption(v: Option[Geometry], p: PositionedParameters) =
-        p.setBytesOption(v.map(geomAsByteArr _))
-
-      def nextValue(r: PositionedResult) = readGeomFromByteArr(r.nextBytes)
-      def updateValue(v: Geometry, r: PositionedResult) = r.updateBytes(geomAsByteArr(v))
-
+        if (v == None) p.setNull(sqlType) else p.setBytes(geomToBytes(v.get))
+      def nextValue(r: PositionedResult) = bytesToGeom(r.nextBytes)
+      def updateValue(v: Geometry, r: PositionedResult) = r.updateBytes(geomToBytes(v))
       override def valueToSQLLiteral(value: Geometry) =
-        "ST_GeomFromEWKT('SRID=%d;%s')" format (value.getSRID(), twriter.write(value))
+        "ST_GeomFromEWKT('SRID=%d;%s')" format (value.getSRID(), wktWriter.write(value))
     }
   }
 
