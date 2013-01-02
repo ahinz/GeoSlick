@@ -30,6 +30,10 @@ trait PostgisDriver extends PostgresDriver {
           case _ => sys.error("only supported by the postgis driver")
         }
     }
+
+    implicit val optGeomTypeMapper = MappedTypeMapper.base[Geometry,Option[Geometry]](
+        i => if (i eq null) None else Some(i),
+        o => o.getOrElse(null))
   }
 
   class SimpleQL extends super.SimpleQL with Implicits {
@@ -54,7 +58,7 @@ trait PostgisDriver extends PostgresDriver {
   case class SRID(srid: Int) extends ColumnOption[Nothing]
   case class Dims(dims: Int) extends ColumnOption[Nothing]
 
-  trait GeoTypeBase[T] extends ColumnOption[T] {
+  sealed trait GeoTypeBase[T] extends ColumnOption[T] {
     type ColumnType
 
     val name: String
@@ -73,7 +77,7 @@ trait PostgisDriver extends PostgresDriver {
     def unapply[T](gt: GeoType[T]): Option[String] = Some(gt.name)
   }
 
-  class OptionGeoType[T](val base: GeoType[T]) extends GeoTypeBase[Option[T]] {
+  class OptionGeoType[T](val base: GeoTypeBase[T]) extends GeoTypeBase[Option[T]] {
     type ColumnType = Option[Geometry]    
     def mapper = implicitly[TypeMapper[ColumnType]]
 
@@ -95,10 +99,12 @@ trait PostgisDriver extends PostgresDriver {
     def wrapEWKB[C](c: Column[C])(implicit tm: TypeMapper[C]): Column[C] =
       wrapColumnWithSelectOnlyFunction(c, "ST_AsEWKB")
 
-    def geoColumn[C](n: String, srid: Int)(implicit gt: GeoType[C]): Column[gt.ColumnType] =
-      wrapEWKB(column[gt.ColumnType](n, gt.asGeom, SRID(srid))(gt.mapper))
+    def geoColumn[C](n: String, srid: Int)(implicit gt: GeoTypeBase[C]): Column[gt.ColumnType] = {
+      val col = column[gt.ColumnType](n, gt.asGeom, SRID(srid))(gt.mapper)
+      wrapEWKB(col)(gt.mapper)
+    }
 
-    @inline implicit def geoTypeToOptionGeoType[T](implicit gt: GeoType[T]): OptionGeoType[T] =
+    @inline implicit def geoTypeToOptionGeoType[T](implicit gt: GeoTypeBase[T]): OptionGeoType[T] =
       new OptionGeoType[T](gt)
 
     implicit object GeometryType extends GeoType[Geometry]("GEOMETRY")

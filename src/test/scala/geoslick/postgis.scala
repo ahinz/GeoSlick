@@ -77,7 +77,7 @@ class PostgisSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
-  "Postgis driver" should "be able to query with geo fcns" in {
+  it should "be able to query with geo fcns" in {
     db withSession {
       // Make sure things are clean
       // we probably shouldn't need this
@@ -124,4 +124,69 @@ class PostgisSpec extends FlatSpec with ShouldMatchers {
       City.ddl.drop
     }
   }
+
+  object OptCity extends PostgisTable[(Int,String,Option[Geometry])]("cities") {
+      
+    def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
+    def name = column[String]("name")
+    def geom = geoColumn[Option[Point]]("geom", 4326)
+
+    def * = id ~ name ~ geom
+    def forInsert = name ~ geom
+  }
+
+  it should "be able to handle optional fields" in {
+    db withSession {
+      try { OptCity.ddl.drop } catch { case e: Throwable => }
+
+      OptCity.ddl.create
+
+      val cities = Seq(("washington",Some(pt(-77.02,38.53))),
+                       ("london", None),
+                       ("paris", Some(pt(2.3470,48.8742))))
+
+      OptCity.forInsert.insertAll(cities:_*)
+
+      val q1 = for {
+          c <- OptCity if c.geom isNull
+        } yield (c.name, c.geom)
+
+      q1.list should equal (List(("london",None)))
+
+      val q2 = for {
+          c <- OptCity if c.geom isNotNull
+        } yield c.name
+
+      q2.list should equal (List("washington","paris"))
+
+      OptCity.ddl.drop
+    }
+  }
+
+  it should "be able to query with geo fcns on null fields" in {
+    db withSession {
+      // Make sure things are clean
+      // we probably shouldn't need this
+      try { OptCity.ddl.drop } catch { case e: Throwable =>  }
+
+      val data2 = data.map {
+          case (s,g) => (s, Some(g))
+        }
+
+      OptCity.ddl.create
+      OptCity.forInsert.insertAll(data2:_*)
+
+      // 40.30, 78.32 -> Altoona,PA
+      val bbox = bboxBuffer(78.32, 40.30, 0.01)
+      
+      val q = for {
+          c <- OptCity if c.geom && bbox // && -> overlaps
+        } yield c.name
+
+      q.list should equal (List("Altoona,PA"))
+
+      OptCity.ddl.drop
+    }
+  }
+
 }

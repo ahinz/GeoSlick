@@ -46,4 +46,7 @@ object util {
           x + d, y + d,
           x + d, y - d,
           x - d, y - d))
+
+  def pt(x: Double, y: Double) =
+    wkt[Point]("POINT(%f %f)" format (x,y))
 }
