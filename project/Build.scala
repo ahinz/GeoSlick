@@ -17,7 +17,8 @@ object MyBuild extends Build {
         "com.typesafe" % "slick_2.10.0-RC5" % "0.11.2",
         "org.slf4j" % "slf4j-nop" % "1.6.4",
         "postgresql" % "postgresql" % "8.4-702.jdbc4",
-        "com.vividsolutions" % "jts" % "1.12"
+        "com.vividsolutions" % "jts" % "1.12",
+        "org.scalatest" % "scalatest_2.10.0" % "2.0.M5" % "test"
     ),
 
     resolvers ++= Seq(
