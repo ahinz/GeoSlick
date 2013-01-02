@@ -7,7 +7,7 @@ object MyBuild extends Build {
     name := "geoslick",
     version := "0.1.0-SNAPSHOT",
 
-    scalaVersion := "2.10.0-RC5",
+    scalaVersion := "2.10.0",
 
     scalacOptions ++= Seq("-deprecation", "-unchecked", "-optimize"),
 
