@@ -31,10 +31,14 @@ class PostgisSpec extends FlatSpec with ShouldMatchers {
     def forInsert = name ~ geom
   }
 
-  val db = Database.forURL("jdbc:postgresql:slick",
+  val pguser = scala.util.Properties.envOrElse("PGUSER","postgres")
+  val pgpass = scala.util.Properties.envOrElse("PGPASS","postgres")
+  val pgdb = scala.util.Properties.envOrElse("PGDB","slick")
+
+  val db = Database.forURL("jdbc:postgresql:" + pgdb,
                            driver="org.postgresql.Driver",
-                           user="adam",
-                           password="adam")
+                           user=pguser,
+                           password=pgpass)
 
   "Environment" should "be sane" in {    
     db withSession {
