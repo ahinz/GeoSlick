@@ -1,0 +1,13 @@
+language:  scala
+scala:
+  - 2.9.2
+before_script:
+  - sudo apt-get install postgresql postgresql-client postgresql-contrib
+  - sudo apt-get install postgresql-9.1-postgis
+  - sudo -u postgres psql -c "CREATE USER slick SUPERUSER ENCRYPTED PASSWORD 'slick'"
+  - sudo -u postgres createdb -O slick slick
+  - sudo -u postgres psql slick -f /usr/share/postgresql/9.1/contrib/postgis-1.5/postgis.sql
+  - sudo -u postgres psql slick -f /usr/share/postgresql/9.1/contrib/postgis-1.5/spatial_ref_sys.sql
+  - sudo -u postgres psql slick -c "alter table geometry_columns owner to slick"
+  - sudo -u postgres psql slick -c "alter table spatial_ref_sys owner to slick"
+script: PGUSER=slick PGPASS=slick PGDB=slick ./sbt test
