@@ -34,8 +34,9 @@ class PostgisSpec extends FlatSpec with ShouldMatchers {
   val pguser = scala.util.Properties.envOrElse("PGUSER","postgres")
   val pgpass = scala.util.Properties.envOrElse("PGPASS","postgres")
   val pgdb = scala.util.Properties.envOrElse("PGDB","slick")
+  val pghost = scala.util.Properties.envOrElse("PGHOST","localhost:5432")
 
-  val db = Database.forURL("jdbc:postgresql:" + pgdb,
+  val db = Database.forURL("jdbc:postgresql://" + pghost + "/" + pgdb,
                            driver="org.postgresql.Driver",
                            user=pguser,
                            password=pgpass)
@@ -102,12 +103,16 @@ class PostgisSpec extends FlatSpec with ShouldMatchers {
           c2 <- City if c1.geom.distance(c2.geom) < dist && c1.name =!= c2.name
         } yield (c1.name, c2.name, c1.geom.distance(c2.geom))
 
+      val q2format = q2.list map {
+          case (n1,n2,d) => (n1,n2,"%1.4f" format d)
+        }
+
       val jts = for {
           j1 <- data
           j2 <- data if j1._2.distance(j2._2) < dist && j1._1 != j2._1
-        } yield (j1._1, j2._1, j1._2.distance(j2._2))
+        } yield (j1._1, j2._1, "%1.4f" format j1._2.distance(j2._2))
 
-      q2.list should equal (jts.toList)
+      q2format should equal (jts.toList)
           
       // Output function
       val q3 = for {
