@@ -189,4 +189,28 @@ class PostgisSpec extends FlatSpec with ShouldMatchers {
     }
   }
 
+
+  it should "be able to handle generic geom fields" in {
+    // if this compiles we're golden
+    object Foo extends PostgisTable[(Int,String,Option[Geometry])]("foo") {
+      
+      def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
+      def name = column[String]("name")
+      def geom = geoColumn[Option[Geometry]]("geom", 4326)
+
+      def * = id ~ name ~ geom
+      def forInsert = name ~ geom
+    }
+
+    object Bar extends PostgisTable[(Int,String,Geometry)]("bar") {
+      
+      def id = column[Int]("id", O.PrimaryKey, O.AutoInc)
+      def name = column[String]("name")
+      def geom = geoColumn[Geometry]("geom", 4326)
+
+      def * = id ~ name ~ geom
+      def forInsert = name ~ geom
+    }
+
+  }
 }
