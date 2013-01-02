@@ -54,13 +54,31 @@ trait PostgisDriver extends PostgresDriver {
   case class SRID(srid: Int) extends ColumnOption[Nothing]
   case class Dims(dims: Int) extends ColumnOption[Nothing]
 
-  class GeoType[T](val name: String) extends ColumnOption[T]
+  trait GeoTypeBase[T] extends ColumnOption[T] {
+    type ColumnType
+
+    val name: String
+
+    def asGeom = new GeoType[ColumnType](name)
+    def mapper:TypeMapper[ColumnType]
+  }
+
+  class GeoType[T](val name: String) extends GeoTypeBase[T] {
+    type ColumnType = Geometry
+    
+    def mapper = implicitly[TypeMapper[ColumnType]]
+  }
 
   object GeoType {
     def unapply[T](gt: GeoType[T]): Option[String] = Some(gt.name)
   }
 
-  class OptionGeoType[T](val base: GeoType[T]) extends GeoType[Option[T]](base.name)
+  class OptionGeoType[T](val base: GeoType[T]) extends GeoTypeBase[Option[T]] {
+    type ColumnType = Option[Geometry]    
+    def mapper = implicitly[TypeMapper[ColumnType]]
+
+    val name = base.name    
+  }
 
   trait Postgis { self: Table[_] =>
     // Take a column and wrap it with a function that is called
@@ -74,11 +92,11 @@ trait PostgisDriver extends PostgresDriver {
           SelectOnlyApply(c.nodeDelegate, this, ch, implicitly[TypeMapper[T]])
        }.column(c.nodeDelegate)(tm)
 
-    def wrapEWKB[C](c: Column[C])(implicit gt: GeoType[C], tm: TypeMapper[C]): Column[C] =
+    def wrapEWKB[C](c: Column[C])(implicit tm: TypeMapper[C]): Column[C] =
       wrapColumnWithSelectOnlyFunction(c, "ST_AsEWKB")
 
-    def geoColumn[C](n: String, srid: Int)(implicit gt: GeoType[C], tm: TypeMapper[C]): Column[C] =
-      wrapEWKB(column[C](n, gt, SRID(srid)))
+    def geoColumn[C](n: String, srid: Int)(implicit gt: GeoType[C]): Column[gt.ColumnType] =
+      wrapEWKB(column[gt.ColumnType](n, gt.asGeom, SRID(srid))(gt.mapper))
 
     @inline implicit def geoTypeToOptionGeoType[T](implicit gt: GeoType[T]): OptionGeoType[T] =
       new OptionGeoType[T](gt)
