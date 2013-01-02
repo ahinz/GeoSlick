@@ -5,6 +5,8 @@
 GeoSlick is an experimental library that adds support for PostGIS
 to Slick
 
+[![Build Status](https://secure.travis-ci.org/ahinz/GeoSlick.png)](http://travis-ci.org/ahinz/GeoSlick)
+
 ### Geometry Columns
 
 To support geometry columns have your tables mix in the `Postgis`
