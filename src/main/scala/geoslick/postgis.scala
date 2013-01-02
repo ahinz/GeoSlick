@@ -15,7 +15,7 @@ import scala.slick.driver.PostgresDriver
 import com.vividsolutions.jts.geom._
 import com.vividsolutions.jts.io.{WKBReader, WKBWriter, InputStreamInStream, WKTWriter}
 
-trait PostgisDriver extends PostgresDriver {  
+trait PostgisDriver extends PostgresDriver {
 
   //==================================================================
   // Implicit support
@@ -37,7 +37,7 @@ trait PostgisDriver extends PostgresDriver {
     type PostgisTable[T] = PostgisDriver.PostgisTable[T]
   }
 
-  abstract class PostgisTable[T](schema: Option[String], table: String) 
+  abstract class PostgisTable[T](schema: Option[String], table: String)
       extends Table[T](schema, table) with Postgis {
     def this(tblName: String) = this(None, tblName)
   }
@@ -52,26 +52,38 @@ trait PostgisDriver extends PostgresDriver {
   // the postgis driver?
 
   case class SRID(srid: Int) extends ColumnOption[Nothing]
-  case class Dims(srid: Int) extends ColumnOption[Nothing]
-  case class GeoType[T <: Geometry](s: String) extends ColumnOption[Nothing]
+  case class Dims(dims: Int) extends ColumnOption[Nothing]
+
+  class GeoType[T](val name: String) extends ColumnOption[T]
+
+  object GeoType {
+    def unapply[T](gt: GeoType[T]): Option[String] = Some(gt.name)
+  }
+
+  class OptionGeoType[T](val base: GeoType[T]) extends GeoType[Option[T]](base.name)
 
   trait Postgis { self: Table[_] =>
     // Take a column and wrap it with a function that is called
     // only on select. In this case, geometry fields get wrapped
     // with ST_AsEWKB on select and are inserted as raw bytes
-    def wrapColumnWithSelectOnlyFunction[T](c: Column[Geometry], fname: String)(implicit ev: TypeMapper[T]) =
-      new Library.SqlFunction(fname) {
-        override def typed[T:TypeMapper](ch: Node*): SelectOnlyApply =
-          new SelectOnlyApply(c.nodeDelegate, this, ch, ev)
-      }.column(c.nodeDelegate)(ev)
+    def wrapColumnWithSelectOnlyFunction[C](c: Column[C], f: String)(implicit tm: TypeMapper[C]) =
+      new Library.SqlFunction(f) {
+        override def typed(tpe: Type, ch: Node*): Apply with TypedNode =
+          SelectOnlyApply(c.nodeDelegate, this, ch, tpe)
+        override def typed[T : TypeMapper](ch: Node*): Apply with TypedNode =
+          SelectOnlyApply(c.nodeDelegate, this, ch, implicitly[TypeMapper[T]])
+       }.column(c.nodeDelegate)(tm)
 
-    def wrapEWKB(c: Column[Geometry]):Column[Geometry] =
+    def wrapEWKB[C](c: Column[C])(implicit gt: GeoType[C], tm: TypeMapper[C]): Column[C] =
       wrapColumnWithSelectOnlyFunction(c, "ST_AsEWKB")
-    //SelectOnlyApply(c.nodeDelegate, "ST_AsEWKB").column(c.nodeDelegate)
 
-    def geoColumn[T <: Geometry](
-      colName: String, srid: Int)(implicit geo: GeoType[T]):Column[Geometry] =
-      wrapEWKB(column[Geometry](colName, SRID(srid), geo))
+    def geoColumn[C](n: String, srid: Int)(implicit gt: GeoType[C], tm: TypeMapper[C]): Column[C] =
+      wrapEWKB(column[C](n, gt, SRID(srid)))
+
+    @inline implicit def geoTypeToOptionGeoType[T](implicit gt: GeoType[T]): OptionGeoType[T] =
+      new OptionGeoType[T](gt)
+
+    implicit object GeometryType extends GeoType[Geometry]("GEOMETRY")
 
     implicit object PointType extends GeoType[Point]("POINT")
     implicit object LineStringType extends GeoType[LineString]("LINESTRING")
@@ -91,35 +103,32 @@ trait PostgisDriver extends PostgresDriver {
     val geomTypeMapperDelegate = new GeomTypeMapperDelegate
 
     class GeomTypeMapperDelegate extends TypeMapperDelegate[Geometry] {
-      def reader = new WKBReader() // These are not threadsafe
-      def writer = new WKBWriter(2,true) // so always get a fresh copy
-      def twriter = new WKTWriter(2)
-      def readGeomFromByteArr(b: Array[Byte]) = reader.read(b)
+      def wkbReader = new WKBReader() // These are not threadsafe
+      def wkbWriter = new WKBWriter(2, true) // so always get a fresh copy
+      def wktWriter = new WKTWriter(2)
 
-      def geomAsByteArr(g: Geometry):Array[Byte] = 
-        writer.write(g)
+      def geomToBytes(g: Geometry): Array[Byte] =
+        if (g eq null) null else wkbWriter.write(g)
+      def bytesToGeom(b: Array[Byte]): Geometry =
+        if (b eq null) null else wkbReader.read(b)
 
-      def sqlTypeName = "geometry"
       def zero = null
-      def sqlType = java.sql.Types.BLOB
-      def setValue(v: Geometry, p: PositionedParameters) =
-        p.setBytes(geomAsByteArr(v))
-
+      def sqlTypeName = "GEOMETRY"
+      def sqlType = java.sql.Types.BINARY
+      def setValue(v: Geometry, p: PositionedParameters) = p.setBytes(geomToBytes(v))
       def setOption(v: Option[Geometry], p: PositionedParameters) =
-        p.setBytesOption(v.map(geomAsByteArr _))
-
-      def nextValue(r: PositionedResult) = readGeomFromByteArr(r.nextBytes)
-      def updateValue(v: Geometry, r: PositionedResult) = r.updateBytes(geomAsByteArr(v))
-
+        if (v == None) p.setNull(sqlType) else p.setBytes(geomToBytes(v.get))
+      def nextValue(r: PositionedResult) = bytesToGeom(r.nextBytes)
+      def updateValue(v: Geometry, r: PositionedResult) = r.updateBytes(geomToBytes(v))
       override def valueToSQLLiteral(value: Geometry) =
-        "ST_GeomFromEWKT('SRID=%d;%s')" format (value.getSRID(), twriter.write(value))
+        "ST_GeomFromEWKT('SRID=%d;%s')" format (value.getSRID(), wktWriter.write(value))
     }
   }
 
   //==================================================================
-  // We have to override the insert builder to correctly 
+  // We have to override the insert builder to correctly
   // handle our new SelectOnlyApply node type
-  // 
+  //
   // Since the original version uses an inner recursive function
   // we have to yank the entire thing out
 
@@ -133,7 +142,7 @@ trait PostgisDriver extends PostgresDriver {
       var table: String = null
       def f(c: Any): Unit = c match {
         case ProductNode(ch) => ch.foreach(f)
-        case SelectOnlyApply(s) => f(s)
+        case SelectOnlyApply(node) => f(node)
         case t:TableNode => f(Node(t.nodeShaped_*.value))
         case Select(Ref(IntrinsicSymbol(t: TableNode)), field: FieldSymbol) =>
           if(table eq null) table = t.tableName
@@ -146,16 +155,23 @@ trait PostgisDriver extends PostgresDriver {
     }
   }
 
-  class SelectOnlyApply(val select: Node, s: Symbol, kids: Seq[Node], tp: Type) extends Apply(s, kids) with TypedNode {
-    def tpe = tp
-    override protected[this] def nodeRebuild(ch: IndexedSeq[scala.slick.ast.Node]) = Apply(sym, ch, tp)
-    override def nodeRebuildWithReferences(syms: IndexedSeq[Symbol]) = Apply(syms(0), children, tp)
+  trait SelectOnlyApply { self: Apply =>
+    def wrappedNodeDelegate: Node
 
     override def toString = "SelectOnlyApply(%s)" format super.toString
   }
-  
+
   object SelectOnlyApply {
-    def unapply(s: SelectOnlyApply):Option[Node] = Some(s.select)
+    def apply(node: Node, sym: Symbol, children: Seq[Node], tp: Type): Apply with TypedNode =
+      new Apply(sym, children) with SelectOnlyApply with TypedNode {
+        def tpe = tp
+        override protected[this] def nodeRebuild(ch: IndexedSeq[scala.slick.ast.Node]) = Apply(sym, ch, tp)
+        override def nodeRebuildWithReferences(syms: IndexedSeq[Symbol]) = Apply(syms(0), children, tp)
+
+        val wrappedNodeDelegate = node
+      }
+
+    def unapply(a: SelectOnlyApply): Option[Node] = Some(a.wrappedNodeDelegate)
   }
 
   //==================================================================
@@ -200,7 +216,7 @@ trait PostgisDriver extends PostgresDriver {
         None
       }
     }
-    
+
     // this must already exist....?
     def quoteString(s: String) = "'%s'" format s
 
@@ -213,7 +229,7 @@ trait PostgisDriver extends PostgresDriver {
         }
         else sb append sqlType
         appendOptions(sb)
-      } 
+      }
     }
   }
 
@@ -250,10 +266,10 @@ trait PostgisDriver extends PostgresDriver {
     def createGeomColumn(f: FieldSymbol):Option[String] =
       createColumnDDLBuilder(f, table).getAddGeometry(table.tableName)
 
-    def createGeomColumns: Iterable[String] = 
+    def createGeomColumns: Iterable[String] =
       table.create_*.flatMap(createGeomColumn _)
-      
+
   }
 }
 
-object PostgisDriver extends PostgisDriver 
+object PostgisDriver extends PostgisDriver
