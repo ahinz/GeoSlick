@@ -56,6 +56,16 @@ class PostgisSpec extends FlatSpec with ShouldMatchers {
 
       q.list should equal (cities)
 
+      val q2 = for { c <- SimpleCity if c.id > 1 } yield c
+      q2.delete
+
+      { for { c <- SimpleCity } yield c }.list.length should equal (1)
+
+      val q3 = for { c <- SimpleCity } yield c
+      q3.delete
+
+      { for { c <- SimpleCity } yield c }.list.length should equal (0)
+
       SimpleCity.ddl.drop
     }
   }
@@ -74,6 +84,58 @@ class PostgisSpec extends FlatSpec with ShouldMatchers {
       q.list should equal (data.toList)
                                   
       City.ddl.drop
+    }
+  }
+
+  it should "be able to delete all" in {
+    db withSession {
+      // Make sure things are clean
+      // we probably shouldn't need this
+      try { City.ddl.drop } catch { case e: Throwable =>  }
+
+      City.ddl.create
+      City.forInsert.insertAll(data:_*)
+
+      val q1 = for { c <- City } yield c
+      q1.list.length should equal (data.length)
+
+      val q2 = for { c <- City } yield c
+      q2.delete
+
+      val q3 = for { c <- City } yield c
+      q3.list.length should equal (0)
+                                  
+      City.ddl.drop    
+    }
+  }
+
+  it should "be able to delete with geom where clause" in {
+    db withSession {
+      // Make sure things are clean
+      // we probably shouldn't need this
+      try { City.ddl.drop } catch { case e: Throwable =>  }
+
+      City.ddl.create
+      City.forInsert.insertAll(data:_*)
+
+      // 40.30, 78.32 -> Altoona,PA
+      val bbox = bboxBuffer(78.32, 40.30, 0.01)
+      
+      val q = for { c <- City if c.geom && bbox } yield c
+      q.delete
+
+      val q2 = for { c <- City } yield c.name
+      q2.list should equal (data.map(_._1).filter(_ != "Altoona,PA").toList)
+
+      City.insert(4000, "ATown",pt(-55.1,23.3))
+
+      val q3 = for { c <- City if c.id =!= 4000 } yield c
+      q3.delete
+
+      val q4 = for { c <- City } yield c.name
+      q4.list should equal (List("ATown"))
+                                  
+      City.ddl.drop    
     }
   }
 

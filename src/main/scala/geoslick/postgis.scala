@@ -2,11 +2,14 @@ package geoslick
 
 import language.implicitConversions
 
+import scala.slick.util.MacroSupport.macroSupportInterpolation
+
 import scala.collection.mutable.ArrayBuffer
 
 import scala.slick.SlickException
 import scala.slick.lifted._
 import scala.slick.ast._
+import scala.slick.driver._
 
 import scala.slick.session.{PositionedParameters, PositionedResult}
 
@@ -15,6 +18,7 @@ import scala.slick.driver.PostgresDriver
 import com.vividsolutions.jts.geom._
 import com.vividsolutions.jts.io.{WKBReader, WKBWriter, InputStreamInStream, WKTWriter}
 
+//TODO: Where clauses should not use "As_EWKB"
 trait PostgisDriver extends PostgresDriver {
 
   //==================================================================
@@ -293,6 +297,102 @@ trait PostgisDriver extends PostgresDriver {
     def createGeomColumns: Iterable[String] =
       table.create_*.flatMap(createGeomColumn _)
 
+  }
+
+  //=================================================================
+  // Query Building
+  override def createQueryBuilder(input: QueryBuilderInput): QueryBuilder =
+    new PostgisQueryBuilder(input)
+
+
+  class PostgisQueryBuilder(input: QueryBuilderInput) extends QueryBuilder(input) {
+    /*
+     * I'm not 100% sure this is right...
+     * Delete expects a tree something like:
+     * Comprehension(fetch = None, offset = None)
+     *  from @2110217109: Table cities
+     *  select: Pure
+     *    value: ProductNode
+     *      1: Path @2110217109.id
+     *      2: Path @2110217109.name
+     *
+     * When we wrap the select with a function we get something like:
+     * Comprehension(fetch = None, offset = None)
+     *  from @498146522: Comprehension(fetch = None, offset = None)
+     *    from @348440261: Table cities
+     *    select: Pure
+     *      value: StructNode
+     *        @1449747101: Path @348440261.id
+     *        @550067645: Path @348440261.name
+     *        @69809180: SelectOnlyApply(Apply Function ST_AsEWKB)
+     *          0: Path @348440261.geom
+     *  select: Pure
+     *    value: ProductNode
+     *      1: Path @498146522.@1449747101
+     *      2: Path @498146522.@550067645
+     *      3: Path @498146522.@69809180
+     *
+     * So we attempt to initially pattern match on a 'no-arg'
+     * comprehension and then use some copied code from slick
+     * to build the delete
+     *
+     * I'm not sure this approach is valid... is there a time
+     * when you might a select like this?
+     */
+
+    // The inner structs end up being referenced by
+    // where clauses in the outer structs. This causes
+    // aliased symbols to fail so we sneak in an define
+    // the symbols directly
+    def evalAnnonPathsInInnerStruct(c: Node) = c match {
+        case Comprehension(_, _, _, _, Some(Pure(StructNode(seq))), _, _) =>
+          for( (sym,node) <- seq )
+            Path.unapply(node).map { elements =>
+              elements.flatMap {
+                case FieldSymbol(sym) => Some(sym)
+                case _ => None
+              }.headOption.map { fieldName =>
+                symbolName(sym) = quoteIdentifier(fieldName)
+              }
+            }
+      }
+
+    // Note--- we could also traverse here and remove the extra "As_EWKT" call
+    // TODO: Add in a compiler phase for this? Custom selects?
+    override def buildDelete: QueryBuilderResult = {
+      input.ast match {
+        case Comprehension(Seq((sym, c@Comprehension(Seq((_,TableNode(tbl))),_,_,_,_,_,_))),
+                           where: Seq[Node],
+                           None,
+                           Seq(),
+                           Some(Pure(ProductNode(_))),
+                           None, None) => {
+          evalAnnonPathsInInnerStruct(c)
+          symbolName(sym) = quoteIdentifier(tbl)
+          
+          createDeleteSet(c, Some(where))
+        }
+        case o =>
+          createDeleteSet(o)
+      }
+    }
+
+    // this is pretty much right from slick
+    def createDeleteSet(c: Node, wOpt: Option[Seq[Node]] = None) = {
+      val (gen, from, innerWhere) = c match {
+          case Comprehension(Seq((sym, from: TableNode)), where, _, _, Some(Pure(select)), None, None) => (sym, from, where)
+          case o => throw new SlickException("A query for a DELETE statement must resolve to a comprehension with a single table -- Unsupported shape: "+o)
+        }
+      val where = wOpt.getOrElse(innerWhere)
+      val qtn = quoteIdentifier(from.tableName)
+      symbolName(gen) = qtn // Alias table to itself because DELETE does not support aliases
+      b"delete from $qtn"
+      if(!where.isEmpty) {
+        b" where "
+        expr(where.reduceLeft((a, b) => Library.And(a, b)), true)
+      }
+      QueryBuilderResult(b.build, input.linearizer)
+    }
   }
 }
 
